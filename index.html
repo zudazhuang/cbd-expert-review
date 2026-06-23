@@ -16,7 +16,6 @@
           排序按第1名=5分、第2名=4分、第3名=3分、第4名=2分、第5名=1分折算。
         </p>
       </div>
-      <a class="ghost-link" href="#submit">提交结果</a>
     </header>
 
     <main>
@@ -42,6 +41,7 @@
         <h2>投票人背景信息</h2>
         <div class="form-grid">
           <label>投票人ID或姓名<input id="voterId" autocomplete="name" required /></label>
+          <label>单位/身份<input id="affiliation" placeholder="可选" /></label>
           <label>最高学历
             <select id="education" required>
               <option value="">请选择</option>
@@ -84,7 +84,6 @@
               <option>经常参与</option>
             </select>
           </label>
-          <label>单位/身份<input id="affiliation" placeholder="可选" /></label>
           <label>备注<input id="note" placeholder="可选" /></label>
         </div>
       </section>
@@ -96,22 +95,22 @@
       </section>
 
       <section class="panel" id="submit">
-        <h2>提交与导出</h2>
+        <h2>提交结果</h2>
         <p class="hint">
-          GitHub Pages 静态页面默认不保存数据。请完成后点击“生成结果”，下载CSV或复制结果发给研究者。
-          若后续配置了在线回收接口，页面会自动尝试提交。
+          请完成全部排序后提交。提交成功后，结果会进入后台数据表；CSV和JSON仅作为本地备份。
         </p>
         <div class="actions">
-          <button id="generateBtn" type="button">生成结果</button>
+          <button id="generateBtn" type="button">提交结果</button>
           <button id="downloadBtn" type="button" disabled>下载CSV</button>
           <button id="copyBtn" type="button" disabled>复制JSON</button>
           <a id="mailBtn" class="button muted disabled" href="#" aria-disabled="true">邮件发送</a>
         </div>
-        <pre id="status" class="status">尚未生成结果。</pre>
+        <pre id="status" class="status">尚未提交结果。</pre>
         <textarea id="output" readonly placeholder="生成后的结构化结果会显示在这里"></textarea>
       </section>
     </main>
 
+    <script src="config.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

@@ -1,4 +1,5 @@
-const SUBMIT_ENDPOINT = "";
+const SUBMIT_ENDPOINT = window.EXPERT_REVIEW_SUBMIT_ENDPOINT || "";
+const SUBMIT_MODE = window.EXPERT_REVIEW_SUBMIT_MODE || "no-cors";
 
 const cases = [
   ["01", "A形框架茶室"],
@@ -270,12 +271,12 @@ function buildRecords(bg) {
 function toCsv(records) {
   const headers = [
     "voter_id",
+    "affiliation",
     "education",
     "architecture_major",
     "frontline_design",
     "design_years",
     "tool_familiarity",
-    "affiliation",
     "note",
     "submitted_at",
     "comparison_group",
@@ -293,14 +294,24 @@ function toCsv(records) {
 }
 
 async function trySubmit(payload) {
-  if (!SUBMIT_ENDPOINT) return "未配置在线回收接口，已生成本地导出结果。";
+  if (!SUBMIT_ENDPOINT) return "未配置后台回收接口，当前结果尚未进入后台数据表。";
+  if (SUBMIT_MODE === "no-cors") {
+    await fetch(SUBMIT_ENDPOINT, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload),
+    });
+    return "已发送到后台回收接口，并生成本地备份结果。";
+  }
   const response = await fetch(SUBMIT_ENDPOINT, {
     method: "POST",
+    mode: "cors",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   if (!response.ok) throw new Error(`在线提交失败：${response.status}`);
-  return "已在线提交，并生成本地备份结果。";
+  return "已提交到后台数据表，并生成本地备份结果。";
 }
 
 async function generateOutput() {
@@ -340,9 +351,9 @@ async function generateOutput() {
   mailBtn.href = `mailto:?subject=${encodeURIComponent("专家评审结果")}&body=${encodeURIComponent(latestJson.slice(0, 18000))}`;
   try {
     const submitMsg = await trySubmit(payload);
-    status.textContent = `${submitMsg}\n共生成 ${records.length} 条评分记录。请下载CSV并发送给研究者，或复制JSON。`;
+    status.textContent = `${submitMsg}\n共生成 ${records.length} 条评分记录。`;
   } catch (error) {
-    status.textContent = `${error.message}\n共生成 ${records.length} 条评分记录。请下载CSV并发送给研究者，或复制JSON。`;
+    status.textContent = `${error.message}\n共生成 ${records.length} 条评分记录。后台提交未成功，请下载CSV或复制JSON作为备份。`;
   }
 }
 

@@ -52,4 +52,19 @@ python D:\CBD\paper_assets\expert_review_site\scripts\make_qr.py --url https://z
 
 ## 数据回收
 
-GitHub Pages 是静态托管，默认不会自动保存数据。专家完成后可下载CSV或复制JSON发送给研究者。若后续接入 Google Apps Script、腾讯文档或其他表单 webhook，可在 `app.js` 顶部填写 `SUBMIT_ENDPOINT` 实现自动回收。
+GitHub Pages 是静态托管，本身不能写入数据表。页面已预留后台回收接口，配置后专家点击“提交结果”会自动把数据发送到后台，同时仍可下载CSV或复制JSON作为备份。
+
+后台接口配置在：
+
+`config.js`
+
+```js
+window.EXPERT_REVIEW_SUBMIT_ENDPOINT = "填写后台 Web App / webhook URL";
+window.EXPERT_REVIEW_SUBMIT_MODE = "no-cors";
+```
+
+可直接使用 Google Sheets 作为后台数据表。先新建 Google 表格，打开“扩展程序 / Apps Script”，复制：
+
+`backend\google-apps-script.gs`
+
+部署为 Web App 后，把生成的 URL 填入 `config.js`。每次完整提交会在表格里追加 240 条记录，即 2 个对比组 × 8 个案例 × 3 个维度 × 5 个名次。

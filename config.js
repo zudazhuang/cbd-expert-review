@@ -1,0 +1,2 @@
+window.EXPERT_REVIEW_SUBMIT_ENDPOINT = "";
+window.EXPERT_REVIEW_SUBMIT_MODE = "no-cors";
