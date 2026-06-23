@@ -121,6 +121,9 @@ function backendReady() {
 }
 
 function primaryBackendReady() {
+  if (PRIMARY_BACKEND.type === "supabase") {
+    return Boolean(PRIMARY_BACKEND.supabaseUrl && PRIMARY_BACKEND.supabaseAnonKey && PRIMARY_BACKEND.tableName);
+  }
   return Boolean(["google_apps_script", "cloudbase_http"].includes(PRIMARY_BACKEND.type) && PRIMARY_BACKEND.submitUrl);
 }
 
@@ -725,6 +728,25 @@ async function submitToPrimaryBackend(compactSubmission) {
     ...compactSubmission,
     saved_at: compactSubmission.submitted_at,
   });
+  if (PRIMARY_BACKEND.type === "supabase") {
+    const apiBase = PRIMARY_BACKEND.supabaseUrl.replace(/\/$/, "");
+    const table = encodeURIComponent(PRIMARY_BACKEND.tableName || "expert_review_submissions");
+    const response = await fetch(`${apiBase}/rest/v1/${table}`, {
+      method: "POST",
+      mode: "cors",
+      headers: {
+        apikey: PRIMARY_BACKEND.supabaseAnonKey,
+        Authorization: `Bearer ${PRIMARY_BACKEND.supabaseAnonKey}`,
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error(`长期后台提交失败：${response.status}`);
+    const result = await response.json().catch(() => []);
+    const id = Array.isArray(result) ? result[0]?.id : result?.id;
+    return `已提交到长期后台数据表${id ? `，后台记录ID：${id}` : ""}。`;
+  }
   if (PRIMARY_BACKEND.type === "cloudbase_http") {
     const response = await fetch(PRIMARY_BACKEND.submitUrl, {
       method: "POST",

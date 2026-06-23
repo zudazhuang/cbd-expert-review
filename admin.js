@@ -52,6 +52,10 @@ function primaryListUrl() {
   return PRIMARY_BACKEND.listUrl;
 }
 
+function supabaseReady() {
+  return Boolean(PRIMARY_BACKEND.type === "supabase" && PRIMARY_BACKEND.supabaseUrl && PRIMARY_BACKEND.supabaseAnonKey && PRIMARY_BACKEND.tableName);
+}
+
 function loadJsonp(url) {
   return new Promise((resolve, reject) => {
     const callback = `expertReviewCallback_${Date.now()}_${Math.random().toString(36).slice(2)}`;
@@ -73,6 +77,21 @@ function loadJsonp(url) {
 }
 
 async function primaryList() {
+  if (supabaseReady()) {
+    const apiBase = PRIMARY_BACKEND.supabaseUrl.replace(/\/$/, "");
+    const table = encodeURIComponent(PRIMARY_BACKEND.tableName || "expert_review_submissions");
+    const url = `${apiBase}/rest/v1/${table}?select=*&order=created_at.asc`;
+    const response = await fetch(url, {
+      cache: "no-store",
+      headers: {
+        apikey: PRIMARY_BACKEND.supabaseAnonKey,
+        Authorization: `Bearer ${PRIMARY_BACKEND.supabaseAnonKey}`,
+      },
+    });
+    if (!response.ok) throw new Error(`长期后台读取失败：${response.status}`);
+    const submissions = await response.json();
+    return { submissions, drafts: [] };
+  }
   const url = primaryListUrl();
   if (!url) return { submissions: [], drafts: [] };
   if (PRIMARY_BACKEND.type === "cloudbase_http") {
@@ -285,7 +304,7 @@ function filterSubmittedDrafts(drafts, submissions) {
 async function refreshData() {
   const status = document.querySelector("#adminStatus");
   const output = document.querySelector("#adminOutput");
-  const hasPrimary = Boolean(primaryListUrl());
+  const hasPrimary = Boolean(primaryListUrl()) || supabaseReady();
   const hasLegacyCrud = BACKEND.type === "crudcrud" && BACKEND.baseUrl;
   const shouldReadDrafts = new URL(window.location.href).searchParams.get("drafts") !== "0";
   if (hasPrimary || hasLegacyCrud) {
