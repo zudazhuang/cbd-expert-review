@@ -170,6 +170,20 @@ figcaption {
   margin-bottom: 12px;
 }
 
+.case-prompt {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--accent);
+  background: #f8fafc;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.case-prompt strong {
+  color: var(--accent);
+}
+
 .question {
   display: flex;
   gap: 10px;
@@ -362,5 +376,15 @@ button:disabled,
   .ranking-table select {
     padding: 8px 5px;
     font-size: 12px;
+  }
+
+  .case-title {
+    display: block;
+  }
+
+  .case-prompt {
+    padding: 9px 10px;
+    font-size: 13px;
+    line-height: 1.6;
   }
 }

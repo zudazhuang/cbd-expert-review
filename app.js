@@ -11,6 +11,17 @@ const cases = [
   ["08", "植物温室"],
 ];
 
+const casePrompts = {
+  "01": "一个干净的湖边A形框架茶室的建筑3D模型。强调陡峭的坡屋顶、温暖的木质内饰、玻璃端墙和一个安静的水边露台。使用克制的现代体量、清晰的建筑构件、一个简洁的场地基座和一个水面。",
+  "02": "一个干净的山地游客中心建筑3D模型。强调顺应坡地的错层体量、清晰的主入口、面向景观的玻璃界面、观景平台、坡道或台阶组织，以及简洁的地形基座。使用现代建筑语言、清晰构件和可读的公共到达空间。",
+  "03": "一个干净的庭院式社区中心建筑3D模型。强调围合庭院、清晰的公共入口、连续的廊下空间、面向内院的玻璃界面、低矮现代体量和简洁的场地基座。建筑应表现出社区公共性、空间可达性和清晰的屋顶层级。",
+  "04": "一个干净的河畔咖啡馆建筑3D模型。强调面向水面的开放立面、轻薄屋顶或雨棚、沿河露台、清晰柱网、透明用餐空间和简洁的岸线场地。使用克制现代体量、清楚的结构构件和安静的水边氛围。",
+  "05": "一个干净的小型黑盒剧场及前厅建筑3D模型。强调封闭深色的演出体量、低矮透明的前厅、清晰主入口、前场台阶或坡道、屋顶天窗、辅助体量和简洁场地基座。建筑应体现剧场的内向性与入口公共性的对比。",
+  "06": "一个干净的水边船屋亭廊建筑3D模型。强调开放的停船或下水空间、轻质屋顶、透明栏杆、临水平台、细柱支撑、坡道或码头连接，以及清晰的水面与岸线基座。建筑应体现轻盈、开放和可到达的水边活动属性。",
+  "07": "一个干净的山坡旅馆建筑3D模型。强调顺坡布置的客房单元、层层退台、面向景观的露台、连续步道或入口平台、清晰屋顶层级、植被与坡地边界。建筑应体现山地住宿的组团关系、地形适应和景观朝向。",
+  "08": "一个干净的植物温室及教育中心建筑3D模型。强调透明温室主体、可读的拱形或坡屋顶框架、植物展示空间、访客流线、附属教学或服务空间、简洁基座和清晰结构构件。建筑应体现温室的透明性、教育功能和轻质建构特征。",
+};
+
 const dimensions = [
   ["functionality", "功能适配"],
   ["build_quality", "建构合规"],
@@ -77,6 +88,7 @@ function buildSurvey() {
           <h3>${caseId} ${caseName}</h3>
           <span class="score-note">候选：方案A / 方案B / 方案C / 方案D / 方案E</span>
         </div>
+        <p class="case-prompt"><strong>任务提示词：</strong>${casePrompts[caseId]}</p>
         <figure class="case-figure">
           <a href="assets/cases/${group.id}_${caseId}.jpg" target="_blank" rel="noreferrer">
             <picture>
@@ -84,7 +96,7 @@ function buildSurvey() {
               <img src="assets/cases/${group.id}_${caseId}.jpg" alt="${group.name} ${caseId} ${caseName} comparison" loading="lazy" />
             </picture>
           </a>
-          <figcaption>${group.name} / ${caseId} ${caseName}：手机端已放大为两行图，请根据上方匿名候选图完成下方三个维度排序。</figcaption>
+          <figcaption>${group.name} / ${caseId} ${caseName}：请根据上方匿名候选图完成下方三个维度排序。</figcaption>
         </figure>
         <div class="ranking-table-wrap">
           <table class="ranking-table">
