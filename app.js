@@ -1,5 +1,16 @@
 const SUBMIT_ENDPOINT = window.EXPERT_REVIEW_SUBMIT_ENDPOINT || "";
 const SUBMIT_MODE = window.EXPERT_REVIEW_SUBMIT_MODE || "no-cors";
+const STORAGE_KEY = "cbd_expert_review_draft_v1";
+const BACKGROUND_FIELD_IDS = [
+  "voterId",
+  "affiliation",
+  "education",
+  "architectureMajor",
+  "frontlineDesign",
+  "designYears",
+  "toolFamiliarity",
+  "note",
+];
 
 const cases = [
   ["01", "A形框架茶室"],
@@ -59,6 +70,7 @@ const groups = [
 const state = {};
 let csvBlobUrl = "";
 let latestJson = "";
+let draftSaveTimer = 0;
 
 function keyOf(groupId, caseId, dimId) {
   return `${groupId}|${caseId}|${dimId}`;
@@ -153,6 +165,7 @@ function buildSurvey() {
           }
           state[qKey] = [];
           renderQuestion(qKey);
+          queueDraftSave();
         });
         statuses.append(question);
       }
@@ -167,6 +180,7 @@ function updateOrderFromSelects(qKey) {
     .map((select) => select.value)
     .filter(Boolean);
   renderQuestion(qKey);
+  queueDraftSave();
 }
 
 function renderQuestion(qKey) {
@@ -213,6 +227,86 @@ function getBackground() {
     note: document.querySelector("#note").value.trim(),
     submitted_at: new Date().toISOString(),
   };
+}
+
+function getBackgroundDraft() {
+  const draft = {};
+  for (const id of BACKGROUND_FIELD_IDS) {
+    draft[id] = document.querySelector(`#${id}`)?.value || "";
+  }
+  return draft;
+}
+
+function saveDraft(showMessage = false) {
+  const payload = {
+    background: getBackgroundDraft(),
+    rankings: state,
+    saved_at: new Date().toISOString(),
+  };
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  } catch {
+    if (showMessage) {
+      document.querySelector("#status").textContent = "当前浏览器无法暂存进度，请勿关闭页面。";
+    }
+    return;
+  }
+  if (showMessage) {
+    const status = document.querySelector("#status");
+    status.textContent = `已暂存进度。同一设备、同一浏览器再次打开页面时会自动恢复。`;
+  }
+}
+
+function queueDraftSave() {
+  clearTimeout(draftSaveTimer);
+  draftSaveTimer = setTimeout(() => saveDraft(false), 250);
+}
+
+function restoreDraft() {
+  let raw = "";
+  try {
+    raw = localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return;
+  }
+  if (!raw) return;
+  let draft;
+  try {
+    draft = JSON.parse(raw);
+  } catch {
+    return;
+  }
+  for (const [id, value] of Object.entries(draft.background || {})) {
+    const field = document.querySelector(`#${id}`);
+    if (field) field.value = value;
+  }
+  for (const [qKey, order] of Object.entries(draft.rankings || {})) {
+    if (!Array.isArray(order)) continue;
+    state[qKey] = order.filter(Boolean);
+    const selects = Array.from(document.querySelectorAll(`select[data-key="${qKey}"]`));
+    selects.forEach((select, index) => {
+      select.value = state[qKey][index] || "";
+    });
+    renderQuestion(qKey);
+  }
+  const status = document.querySelector("#status");
+  if (draft.saved_at) {
+    const savedAt = new Date(draft.saved_at);
+    status.textContent = `已恢复上次暂存进度：${savedAt.toLocaleString()}`;
+  }
+}
+
+function bindDraftEvents() {
+  for (const id of BACKGROUND_FIELD_IDS) {
+    const field = document.querySelector(`#${id}`);
+    field?.addEventListener("input", queueDraftSave);
+    field?.addEventListener("change", queueDraftSave);
+  }
+  document.querySelector("#saveDraftBtn").addEventListener("click", () => saveDraft(true));
+  window.addEventListener("pagehide", () => saveDraft(false));
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") saveDraft(false);
+  });
 }
 
 function validateForm() {
@@ -359,3 +453,5 @@ async function generateOutput() {
 
 document.querySelector("#generateBtn").addEventListener("click", generateOutput);
 buildSurvey();
+restoreDraft();
+bindDraftEvents();
