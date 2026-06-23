@@ -48,12 +48,33 @@
       </section>
 
       <section class="panel">
+        <h2>暂存记录</h2>
+        <p class="hint">暂存记录表示用户填写过程中保存过，但尚未形成正式提交；正式统计请以提交列表为准。</p>
+        <div class="ranking-table-wrap">
+          <table class="ranking-table">
+            <thead>
+              <tr>
+                <th>序号</th>
+                <th>投票人</th>
+                <th>单位/身份</th>
+                <th>学历</th>
+                <th>完成题数</th>
+                <th>暂存时间</th>
+                <th>暂存ID</th>
+              </tr>
+            </thead>
+            <tbody id="draftRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
         <h2>原始数据</h2>
         <textarea id="adminOutput" readonly placeholder="刷新后显示后台JSON数据"></textarea>
       </section>
     </main>
 
-    <script src="config.js?v=20260623-2"></script>
-    <script src="admin.js?v=20260623-2"></script>
+    <script src="config.js?v=20260623-3"></script>
+    <script src="admin.js?v=20260623-3"></script>
   </body>
 </html>

@@ -405,8 +405,14 @@ function saveDraft(showMessage = false) {
   if (showMessage) {
     const status = document.querySelector("#status");
     status.textContent = `已暂存进度。同一设备、同一浏览器再次打开页面时会自动恢复。`;
+    saveCloudDraft().then(() => {
+      if (currentDraftId) {
+        status.textContent = `已暂存进度。同一设备、同一浏览器再次打开页面时会自动恢复。`;
+      }
+    }).catch(() => {
+      status.textContent = `已在本机暂存进度。云端暂存失败时，请不要清理浏览器数据。`;
+    });
   }
-  queueCloudDraftSave();
 }
 
 function queueDraftSave() {
@@ -416,7 +422,7 @@ function queueDraftSave() {
 
 function queueCloudDraftSave() {
   clearTimeout(cloudDraftSaveTimer);
-  cloudDraftSaveTimer = setTimeout(() => saveCloudDraft(), 1200);
+  cloudDraftSaveTimer = setTimeout(() => {}, 1200);
 }
 
 async function saveCloudDraft() {
@@ -529,9 +535,6 @@ async function initDraft() {
   restoreLocalDraft();
   if (currentDraftId) {
     await restoreCloudDraft();
-  } else {
-    await ensureCloudDraft();
-    saveDraft(false);
   }
 }
 
@@ -638,7 +641,6 @@ function toCsv(records) {
 
 async function submitToRestBackend(compactSubmission, recordCount) {
   if (!backendReady()) throw new Error("未配置后台回收接口，当前结果尚未进入后台数据表。");
-  await saveCloudDraft();
   if (REST_BACKEND.type === "crudcrud") {
     const created = await crudCreate("submissions", compactForBackend({
       ...compactSubmission,

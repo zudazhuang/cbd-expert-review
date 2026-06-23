@@ -24,6 +24,7 @@ const groups = [
 
 let loadedSubmissions = [];
 let loadedRecords = [];
+let loadedDrafts = [];
 
 function objectUrl(id) {
   return `${BACKEND.baseUrl.replace(/\/$/, "")}/${id}`;
@@ -192,21 +193,60 @@ function renderRows(ids, submissions) {
   });
 }
 
+function draftProgress(draft) {
+  const rankings = typeof draft.rankings === "string" ? draft.rankings : draft.r || "";
+  if (!rankings) return { completed: 0, total: questionKeys().length };
+  let completed = 0;
+  const total = questionKeys().length;
+  for (let index = 0; index < total; index += 1) {
+    const chunk = rankings.slice(index * 5, index * 5 + 5);
+    if (chunk.length === 5 && !chunk.includes("_")) completed += 1;
+  }
+  return { completed, total };
+}
+
+function renderDraftRows(drafts) {
+  const tbody = document.querySelector("#draftRows");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+  drafts.forEach((draft, index) => {
+    const normalized = normalizeSubmission(draft);
+    const bg = normalized.background || {};
+    const progress = draftProgress(normalized);
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${index + 1}</td>
+      <td>${bg.voter_id || ""}</td>
+      <td>${bg.affiliation || ""}</td>
+      <td>${bg.education || ""}</td>
+      <td>${progress.completed}/${progress.total}</td>
+      <td>${normalized.submitted_at || ""}</td>
+      <td>${draft._id || ""}</td>
+    `;
+    tbody.append(row);
+  });
+}
+
 async function refreshData() {
   const status = document.querySelector("#adminStatus");
   const output = document.querySelector("#adminOutput");
   if (!BACKEND.baseUrl || !BACKEND.indexId) {
     if (BACKEND.type === "crudcrud" && BACKEND.baseUrl) {
       status.textContent = "正在读取后台数据...";
-      const list = await crudList("submissions");
+      const [list, drafts] = await Promise.all([
+        crudList("submissions").catch(() => []),
+        crudList("drafts").catch(() => []),
+      ]);
       const submissions = list.map((item) => ({ ...normalizeSubmission(item), backend_id: item._id }));
+      loadedDrafts = drafts;
       loadedSubmissions = submissions;
       loadedRecords = submissions.flatMap(expandRecords);
       renderRows(submissions.map((item) => item.backend_id), submissions);
-      output.value = JSON.stringify({ submissions }, null, 2);
+      renderDraftRows(drafts);
+      output.value = JSON.stringify({ submissions, drafts }, null, 2);
       document.querySelector("#downloadCsvBtn").disabled = !loadedRecords.length;
       document.querySelector("#downloadJsonBtn").disabled = !loadedSubmissions.length;
-      status.textContent = `已读取 ${loadedSubmissions.length} 份答卷，展开为 ${loadedRecords.length} 条评分记录。`;
+      status.textContent = `已读取 ${loadedSubmissions.length} 份正式答卷，展开为 ${loadedRecords.length} 条评分记录；另有 ${loadedDrafts.length} 条暂存记录。`;
       return;
     }
     status.textContent = "未配置后台索引。";
