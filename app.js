@@ -1,6 +1,8 @@
 const SUBMIT_ENDPOINT = window.EXPERT_REVIEW_SUBMIT_ENDPOINT || "";
 const SUBMIT_MODE = window.EXPERT_REVIEW_SUBMIT_MODE || "no-cors";
-const STORAGE_KEY = "cbd_expert_review_draft_v1";
+const REST_BACKEND = window.EXPERT_REVIEW_BACKEND || {};
+const STORAGE_KEY = "cbd_expert_review_draft_v2";
+const DRAFT_ID_KEY = "cbd_expert_review_draft_id";
 const BACKGROUND_FIELD_IDS = [
   "voterId",
   "affiliation",
@@ -71,14 +73,109 @@ const state = {};
 let csvBlobUrl = "";
 let latestJson = "";
 let draftSaveTimer = 0;
+let cloudDraftSaveTimer = 0;
+let currentDraftId = "";
+let creatingDraft = null;
 
 function keyOf(groupId, caseId, dimId) {
   return `${groupId}|${caseId}|${dimId}`;
 }
 
+function questionKeys() {
+  const keys = [];
+  for (const group of groups) {
+    for (const [caseId] of cases) {
+      for (const [dimId] of dimensions) {
+        keys.push(keyOf(group.id, caseId, dimId));
+      }
+    }
+  }
+  return keys;
+}
+
+function encodeRankings() {
+  return questionKeys()
+    .map((qKey) => (state[qKey] || []).join("").padEnd(5, "_").slice(0, 5))
+    .join("");
+}
+
+function decodeRankings(code = "") {
+  const decoded = {};
+  questionKeys().forEach((qKey, index) => {
+    decoded[qKey] = code
+      .slice(index * 5, index * 5 + 5)
+      .split("")
+      .filter((item) => item && item !== "_");
+  });
+  return decoded;
+}
+
 function candidateLabel(group, code) {
   const item = group.candidates.find(([candidateCode]) => candidateCode === code);
   return item ? item[1] : code;
+}
+
+function backendReady() {
+  return Boolean(REST_BACKEND.baseUrl && (REST_BACKEND.type === "crudcrud" || REST_BACKEND.indexId));
+}
+
+function objectUrl(id) {
+  return `${REST_BACKEND.baseUrl.replace(/\/$/, "")}/${id}`;
+}
+
+async function backendCreate(name, data) {
+  const response = await fetch(REST_BACKEND.baseUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, data }),
+  });
+  if (!response.ok) throw new Error(`后台创建失败：${response.status}`);
+  return response.json();
+}
+
+async function backendGet(id) {
+  const response = await fetch(objectUrl(id), { cache: "no-store" });
+  if (!response.ok) throw new Error(`后台读取失败：${response.status}`);
+  return response.json();
+}
+
+async function backendPut(id, name, data) {
+  const response = await fetch(objectUrl(id), {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, data }),
+  });
+  if (!response.ok) throw new Error(`后台更新失败：${response.status}`);
+  return response.json();
+}
+
+function crudUrl(collection, id = "") {
+  return `${REST_BACKEND.baseUrl.replace(/\/$/, "")}/${collection}${id ? `/${id}` : ""}`;
+}
+
+async function crudCreate(collection, data) {
+  const response = await fetch(crudUrl(collection), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error(`后台创建失败：${response.status}`);
+  return response.json();
+}
+
+async function crudGet(collection, id) {
+  const response = await fetch(crudUrl(collection, id), { cache: "no-store" });
+  if (!response.ok) throw new Error(`后台读取失败：${response.status}`);
+  return response.json();
+}
+
+async function crudPut(collection, id, data) {
+  const response = await fetch(crudUrl(collection, id), {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error(`后台更新失败：${response.status}`);
 }
 
 function buildSurvey() {
@@ -237,14 +334,68 @@ function getBackgroundDraft() {
   return draft;
 }
 
-function saveDraft(showMessage = false) {
-  const payload = {
+function getDraftStorageKey() {
+  return currentDraftId ? `${STORAGE_KEY}_${currentDraftId}` : STORAGE_KEY;
+}
+
+function compactDraft() {
+  return {
+    draft_id: currentDraftId,
     background: getBackgroundDraft(),
-    rankings: state,
+    rankings: encodeRankings(),
     saved_at: new Date().toISOString(),
   };
+}
+
+function compactForBackend(draft) {
+  const bg = draft.background || {};
+  return {
+    d: draft.draft_id || "",
+    b: {
+      v: bg.voterId || bg.voter_id || "",
+      a: bg.affiliation || "",
+      e: bg.education || "",
+      m: bg.architectureMajor || bg.architecture_major || "",
+      f: bg.frontlineDesign || bg.frontline_design || "",
+      y: bg.designYears || bg.design_years || "",
+      t: bg.toolFamiliarity || bg.tool_familiarity || "",
+      n: (bg.note || "").slice(0, 160),
+    },
+    r: typeof draft.rankings === "string" ? draft.rankings : encodeRankings(),
+    s: draft.saved_at || draft.submitted_at || new Date().toISOString(),
+  };
+}
+
+function expandBackendPayload(data) {
+  if (!data || !data.b) return data;
+  return {
+    draft_id: data.d || "",
+    background: {
+      voterId: data.b.v || "",
+      voter_id: data.b.v || "",
+      affiliation: data.b.a || "",
+      education: data.b.e || "",
+      architectureMajor: data.b.m || "",
+      architecture_major: data.b.m || "",
+      frontlineDesign: data.b.f || "",
+      frontline_design: data.b.f || "",
+      designYears: data.b.y || "",
+      design_years: data.b.y || "",
+      toolFamiliarity: data.b.t || "",
+      tool_familiarity: data.b.t || "",
+      note: data.b.n || "",
+      submitted_at: data.s || "",
+    },
+    rankings: data.r || "",
+    saved_at: data.s || "",
+    submitted_at: data.s || "",
+  };
+}
+
+function saveDraft(showMessage = false) {
+  const payload = compactDraft();
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    localStorage.setItem(getDraftStorageKey(), JSON.stringify(payload));
   } catch {
     if (showMessage) {
       document.querySelector("#status").textContent = "当前浏览器无法暂存进度，请勿关闭页面。";
@@ -255,6 +406,7 @@ function saveDraft(showMessage = false) {
     const status = document.querySelector("#status");
     status.textContent = `已暂存进度。同一设备、同一浏览器再次打开页面时会自动恢复。`;
   }
+  queueCloudDraftSave();
 }
 
 function queueDraftSave() {
@@ -262,25 +414,66 @@ function queueDraftSave() {
   draftSaveTimer = setTimeout(() => saveDraft(false), 250);
 }
 
-function restoreDraft() {
-  let raw = "";
+function queueCloudDraftSave() {
+  clearTimeout(cloudDraftSaveTimer);
+  cloudDraftSaveTimer = setTimeout(() => saveCloudDraft(), 1200);
+}
+
+async function saveCloudDraft() {
+  if (!backendReady()) return;
+  await ensureCloudDraft();
+  if (!currentDraftId) return;
   try {
-    raw = localStorage.getItem(STORAGE_KEY);
+    if (REST_BACKEND.type === "crudcrud") {
+      await crudPut("drafts", currentDraftId, compactForBackend(compactDraft()));
+    } else {
+      await backendPut(currentDraftId, "cbd-expert-review-draft", compactForBackend(compactDraft()));
+    }
   } catch {
-    return;
+    // Local autosave still protects the current browser session.
   }
-  if (!raw) return;
-  let draft;
+}
+
+function setDraftId(id) {
+  if (!id) return;
+  currentDraftId = id;
   try {
-    draft = JSON.parse(raw);
-  } catch {
-    return;
+    localStorage.setItem(DRAFT_ID_KEY, id);
+  } catch {}
+  const url = new URL(window.location.href);
+  if (url.searchParams.get("draft") !== id) {
+    url.searchParams.set("draft", id);
+    window.history.replaceState(null, "", url.toString());
   }
+}
+
+async function ensureCloudDraft() {
+  if (!backendReady()) return "";
+  if (currentDraftId) return currentDraftId;
+  if (creatingDraft) return creatingDraft;
+  const createDraft = REST_BACKEND.type === "crudcrud"
+    ? crudCreate("drafts", compactForBackend(compactDraft())).then((created) => ({ id: created._id }))
+    : backendCreate("cbd-expert-review-draft", compactForBackend(compactDraft()));
+  creatingDraft = createDraft
+    .then((created) => {
+      setDraftId(created.id);
+      return created.id;
+    })
+    .finally(() => {
+      creatingDraft = null;
+    });
+  return creatingDraft;
+}
+
+function applyDraft(draft, sourceLabel = "") {
+  if (!draft) return;
+  draft = expandBackendPayload(draft);
   for (const [id, value] of Object.entries(draft.background || {})) {
     const field = document.querySelector(`#${id}`);
     if (field) field.value = value;
   }
-  for (const [qKey, order] of Object.entries(draft.rankings || {})) {
+  const rankings = typeof draft.rankings === "string" ? decodeRankings(draft.rankings) : draft.rankings || {};
+  for (const [qKey, order] of Object.entries(rankings)) {
     if (!Array.isArray(order)) continue;
     state[qKey] = order.filter(Boolean);
     const selects = Array.from(document.querySelectorAll(`select[data-key="${qKey}"]`));
@@ -292,7 +485,53 @@ function restoreDraft() {
   const status = document.querySelector("#status");
   if (draft.saved_at) {
     const savedAt = new Date(draft.saved_at);
-    status.textContent = `已恢复上次暂存进度：${savedAt.toLocaleString()}`;
+    status.textContent = `已恢复${sourceLabel}暂存进度：${savedAt.toLocaleString()}`;
+  }
+}
+
+function restoreLocalDraft() {
+  let raw = "";
+  try {
+    raw = localStorage.getItem(getDraftStorageKey()) || localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return;
+  }
+  if (!raw) return;
+  let draft;
+  try {
+    draft = JSON.parse(raw);
+  } catch {
+    return;
+  }
+  applyDraft(draft, "本机");
+}
+
+async function restoreCloudDraft() {
+  if (!backendReady() || !currentDraftId) return;
+  try {
+    if (REST_BACKEND.type === "crudcrud") {
+      const object = await crudGet("drafts", currentDraftId);
+      applyDraft(object, "云端");
+    } else {
+      const object = await backendGet(currentDraftId);
+      applyDraft(object.data, "云端");
+    }
+  } catch {}
+}
+
+async function initDraft() {
+  const urlDraft = new URL(window.location.href).searchParams.get("draft");
+  let storedDraft = "";
+  try {
+    storedDraft = localStorage.getItem(DRAFT_ID_KEY) || "";
+  } catch {}
+  if (urlDraft || storedDraft) setDraftId(urlDraft || storedDraft);
+  restoreLocalDraft();
+  if (currentDraftId) {
+    await restoreCloudDraft();
+  } else {
+    await ensureCloudDraft();
+    saveDraft(false);
   }
 }
 
@@ -362,6 +601,16 @@ function buildRecords(bg) {
   return records;
 }
 
+function buildCompactSubmission(bg) {
+  return {
+    draft_id: currentDraftId,
+    background: bg,
+    rankings: encodeRankings(),
+    submitted_at: bg.submitted_at,
+    source_url: window.location.href,
+  };
+}
+
 function toCsv(records) {
   const headers = [
     "voter_id",
@@ -387,7 +636,49 @@ function toCsv(records) {
   return [headers.join(","), ...records.map((record) => headers.map((header) => csvEscape(record[header])).join(","))].join("\n");
 }
 
-async function trySubmit(payload) {
+async function submitToRestBackend(compactSubmission, recordCount) {
+  if (!backendReady()) throw new Error("未配置后台回收接口，当前结果尚未进入后台数据表。");
+  await saveCloudDraft();
+  if (REST_BACKEND.type === "crudcrud") {
+    const created = await crudCreate("submissions", compactForBackend({
+      ...compactSubmission,
+      saved_at: compactSubmission.submitted_at,
+    }));
+    return `已提交到后台数据表，后台记录ID：${created._id}`;
+  }
+  const created = await backendCreate("cbd-expert-review-submission", compactForBackend({
+    ...compactSubmission,
+    saved_at: compactSubmission.submitted_at,
+  }));
+  const indexObject = await backendGet(REST_BACKEND.indexId);
+  const indexData = indexObject.data || {};
+  const maxIds = REST_BACKEND.maxIdsPerPage || 18;
+  let pages = Array.isArray(indexData.pages) ? indexData.pages : [];
+  if (!pages.length) {
+    const page = await backendCreate("cbd-expert-review-index-page", { ids: [] });
+    pages = [page.id];
+    indexData.pages = pages;
+    await backendPut(REST_BACKEND.indexId, indexObject.name || "cbd-expert-review-index-v2", indexData);
+  }
+  const lastPageId = pages[pages.length - 1];
+  const pageObject = await backendGet(lastPageId);
+  const pageData = pageObject.data || {};
+  const ids = Array.isArray(pageData.ids) ? pageData.ids : [];
+  if (ids.length >= maxIds) {
+    const newPage = await backendCreate("cbd-expert-review-index-page", { ids: [created.id] });
+    pages.push(newPage.id);
+    indexData.pages = pages;
+    indexData.updated_at = new Date().toISOString();
+    await backendPut(REST_BACKEND.indexId, indexObject.name || "cbd-expert-review-index-v2", indexData);
+  } else {
+    ids.push(created.id);
+    await backendPut(lastPageId, pageObject.name || "cbd-expert-review-index-page", { ids });
+  }
+  return `已提交到后台数据表，后台记录ID：${created.id}`;
+}
+
+async function trySubmit(payload, compactSubmission) {
+  if (backendReady()) return submitToRestBackend(compactSubmission, payload.records.length);
   if (!SUBMIT_ENDPOINT) return "未配置后台回收接口，当前结果尚未进入后台数据表。";
   if (SUBMIT_MODE === "no-cors") {
     await fetch(SUBMIT_ENDPOINT, {
@@ -419,6 +710,7 @@ async function generateOutput() {
   }
   const records = buildRecords(bg);
   const csv = toCsv(records);
+  const compactSubmission = buildCompactSubmission(bg);
   const payload = { background: bg, records };
   latestJson = JSON.stringify(payload, null, 2);
   output.value = latestJson;
@@ -444,7 +736,7 @@ async function generateOutput() {
   mailBtn.setAttribute("aria-disabled", "false");
   mailBtn.href = `mailto:?subject=${encodeURIComponent("专家评审结果")}&body=${encodeURIComponent(latestJson.slice(0, 18000))}`;
   try {
-    const submitMsg = await trySubmit(payload);
+    const submitMsg = await trySubmit(payload, compactSubmission);
     status.textContent = `${submitMsg}\n共生成 ${records.length} 条评分记录。`;
   } catch (error) {
     status.textContent = `${error.message}\n共生成 ${records.length} 条评分记录。后台提交未成功，请下载CSV或复制JSON作为备份。`;
@@ -453,5 +745,5 @@ async function generateOutput() {
 
 document.querySelector("#generateBtn").addEventListener("click", generateOutput);
 buildSurvey();
-restoreDraft();
 bindDraftEvents();
+initDraft();

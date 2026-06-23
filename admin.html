@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>专家排序评审后台数据</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div>
+        <p class="eyebrow">Review Admin</p>
+        <h1>专家排序评审后台数据</h1>
+        <p class="lead">查看已提交答卷，并导出用于统计分析的CSV或JSON数据。</p>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel">
+        <h2>数据操作</h2>
+        <div class="actions">
+          <button id="refreshBtn" type="button">刷新数据</button>
+          <button id="downloadCsvBtn" type="button" disabled>下载CSV</button>
+          <button id="downloadJsonBtn" type="button" disabled>下载JSON</button>
+        </div>
+        <pre id="adminStatus" class="status">尚未读取数据。</pre>
+      </section>
+
+      <section class="panel">
+        <h2>提交列表</h2>
+        <div class="ranking-table-wrap">
+          <table class="ranking-table">
+            <thead>
+              <tr>
+                <th>序号</th>
+                <th>投票人</th>
+                <th>单位/身份</th>
+                <th>学历</th>
+                <th>建筑专业</th>
+                <th>一线设计</th>
+                <th>提交时间</th>
+                <th>后台记录ID</th>
+              </tr>
+            </thead>
+            <tbody id="submissionRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>原始数据</h2>
+        <textarea id="adminOutput" readonly placeholder="刷新后显示后台JSON数据"></textarea>
+      </section>
+    </main>
+
+    <script src="config.js"></script>
+    <script src="admin.js"></script>
+  </body>
+</html>
