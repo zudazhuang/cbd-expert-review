@@ -125,6 +125,10 @@ function normalizeSubmission(data) {
   };
 }
 
+function voterKey(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
 function expandRecords(submission) {
   const bg = submission.background || {};
   const rankings = typeof submission.rankings === "string" ? decodeRankings(submission.rankings) : submission.rankings || {};
@@ -259,6 +263,20 @@ function renderDraftRows(drafts) {
   });
 }
 
+function filterSubmittedDrafts(drafts, submissions) {
+  const submittedVoters = new Set(
+    submissions
+      .map((submission) => voterKey(submission.background?.voter_id))
+      .filter(Boolean),
+  );
+  if (!submittedVoters.size) return drafts;
+  return drafts.filter((draft) => {
+    const normalized = normalizeSubmission(draft);
+    const key = voterKey(normalized.background?.voter_id);
+    return !key || !submittedVoters.has(key);
+  });
+}
+
 async function refreshData() {
   const status = document.querySelector("#adminStatus");
   const output = document.querySelector("#adminOutput");
@@ -282,7 +300,7 @@ async function refreshData() {
       backend_source: "legacy",
     }));
     const submissions = [...primarySubmissions, ...legacySubmissions];
-    loadedDrafts = [...(primary.drafts || []), ...drafts];
+    loadedDrafts = filterSubmittedDrafts([...(primary.drafts || []), ...drafts], submissions);
     loadedSubmissions = submissions;
     loadedRecords = submissions.flatMap(expandRecords);
     renderRows(submissions.map((item) => item.backend_id), submissions);

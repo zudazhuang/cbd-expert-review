@@ -183,6 +183,21 @@ async function crudPut(collection, id, data) {
   if (!response.ok) throw new Error(`后台更新失败：${response.status}`);
 }
 
+async function crudList(collection) {
+  const response = await fetch(crudUrl(collection), { cache: "no-store" });
+  if (!response.ok) throw new Error(`后台读取失败：${response.status}`);
+  return response.json();
+}
+
+async function crudDelete(collection, id) {
+  const response = await fetch(crudUrl(collection, id), { method: "DELETE" });
+  if (!response.ok) throw new Error(`后台删除失败：${response.status}`);
+}
+
+function voterKey(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
 function buildSurvey() {
   const root = document.querySelector("#survey");
   root.innerHTML = "";
@@ -684,6 +699,26 @@ async function submitToRestBackend(compactSubmission, recordCount) {
   return `已提交到后台数据表，后台记录ID：${created.id}`;
 }
 
+async function cleanupLegacyDrafts(compactSubmission) {
+  if (!backendReady() || REST_BACKEND.type !== "crudcrud") return;
+  const submitted = compactForBackend(compactSubmission);
+  const submittedVoter = voterKey(submitted.b?.v);
+  if (!submittedVoter && !currentDraftId) return;
+  const drafts = await crudList("drafts");
+  const targets = drafts.filter((draft) => {
+    const draftVoter = voterKey(draft.b?.v);
+    return draft._id === currentDraftId || (submittedVoter && draftVoter === submittedVoter);
+  });
+  await Promise.allSettled(targets.map((draft) => crudDelete("drafts", draft._id)));
+  try {
+    if (currentDraftId && targets.some((draft) => draft._id === currentDraftId)) {
+      localStorage.removeItem(DRAFT_ID_KEY);
+      localStorage.removeItem(getDraftStorageKey());
+      currentDraftId = "";
+    }
+  } catch {}
+}
+
 async function submitToPrimaryBackend(compactSubmission) {
   if (!primaryBackendReady()) throw new Error("未配置长期后台。");
   if (PRIMARY_BACKEND.type !== "google_apps_script") throw new Error("长期后台类型暂不支持。");
@@ -702,12 +737,18 @@ async function submitToPrimaryBackend(compactSubmission) {
 async function trySubmit(payload, compactSubmission) {
   if (primaryBackendReady()) {
     try {
-      return await submitToPrimaryBackend(compactSubmission);
+      const message = await submitToPrimaryBackend(compactSubmission);
+      cleanupLegacyDrafts(compactSubmission).catch(() => {});
+      return message;
     } catch (error) {
       if (!backendReady()) throw error;
     }
   }
-  if (backendReady()) return submitToRestBackend(compactSubmission, payload.records.length);
+  if (backendReady()) {
+    const message = await submitToRestBackend(compactSubmission, payload.records.length);
+    cleanupLegacyDrafts(compactSubmission).catch(() => {});
+    return message;
+  }
   if (!SUBMIT_ENDPOINT) return "未配置后台回收接口，当前结果尚未进入后台数据表。";
   if (SUBMIT_MODE === "no-cors") {
     await fetch(SUBMIT_ENDPOINT, {
