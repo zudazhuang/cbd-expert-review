@@ -802,12 +802,16 @@ async function trySubmit(payload, compactSubmission) {
 async function generateOutput() {
   const status = document.querySelector("#status");
   const output = document.querySelector("#output");
+  const submitBtn = document.querySelector("#generateBtn");
   const { bg, missingBg, missingQuestions } = validateForm();
   if (missingBg.length || missingQuestions.length) {
     status.textContent = `请先补全表单。\n背景信息缺失：${missingBg.length ? missingBg.join(", ") : "无"}\n未完成排序题：${missingQuestions.length}题`;
     if (missingQuestions.length) status.textContent += `\n首个未完成：${missingQuestions[0]}`;
     return;
   }
+  submitBtn.disabled = true;
+  submitBtn.textContent = "提交中...";
+  status.textContent = "正在提交，请稍候。";
   const records = buildRecords(bg);
   const csv = toCsv(records);
   const compactSubmission = buildCompactSubmission(bg);
@@ -838,8 +842,13 @@ async function generateOutput() {
   try {
     const submitMsg = await trySubmit(payload, compactSubmission);
     status.textContent = `${submitMsg}\n共生成 ${records.length} 条评分记录。`;
+    if (submitMsg.includes("已提交到长期后台数据表") || submitMsg.includes("已提交到后台数据表")) {
+      window.location.assign("thanks.html");
+    }
   } catch (error) {
     status.textContent = `${error.message}\n共生成 ${records.length} 条评分记录。后台提交未成功，请下载CSV或复制JSON作为备份。`;
+    submitBtn.disabled = false;
+    submitBtn.textContent = "提交结果";
   }
 }
 

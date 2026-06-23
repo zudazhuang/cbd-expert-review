@@ -342,6 +342,100 @@ button:disabled,
   color: var(--muted);
 }
 
+.thanks-page {
+  min-height: 100vh;
+  background: #fff;
+}
+
+.thanks-main {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+}
+
+.thanks-card {
+  width: min(620px, 100%);
+  padding: 42px 28px;
+  text-align: center;
+  border-top: 4px solid var(--accent);
+  border-bottom: 1px solid var(--line);
+}
+
+.thanks-card .lead {
+  margin: 12px auto 24px;
+}
+
+.bow-mark {
+  position: relative;
+  width: 118px;
+  height: 92px;
+  margin: 0 auto 22px;
+}
+
+.bow-head,
+.bow-body,
+.bow-shadow {
+  position: absolute;
+  display: block;
+}
+
+.bow-head {
+  width: 28px;
+  height: 28px;
+  left: 45px;
+  top: 8px;
+  border: 3px solid var(--accent);
+  border-radius: 50%;
+  background: #fff;
+  transform-origin: 50% 80%;
+  animation: bowHead 1.8s ease-in-out infinite;
+}
+
+.bow-body {
+  width: 78px;
+  height: 42px;
+  left: 20px;
+  top: 42px;
+  border: 3px solid var(--accent);
+  border-top-left-radius: 42px;
+  border-top-right-radius: 42px;
+  border-bottom: 0;
+  transform-origin: 50% 100%;
+  animation: bowBody 1.8s ease-in-out infinite;
+}
+
+.bow-shadow {
+  width: 96px;
+  height: 10px;
+  left: 11px;
+  bottom: 0;
+  border-radius: 999px;
+  background: var(--soft);
+}
+
+@keyframes bowHead {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  48%,
+  64% {
+    transform: translateY(28px) rotate(34deg);
+  }
+}
+
+@keyframes bowBody {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  48%,
+  64% {
+    transform: rotate(9deg);
+  }
+}
+
 @media (max-width: 960px) {
   .site-header {
     position: static;
@@ -386,5 +480,9 @@ button:disabled,
     padding: 9px 10px;
     font-size: 13px;
     line-height: 1.6;
+  }
+
+  .thanks-card {
+    padding: 34px 16px;
   }
 }
