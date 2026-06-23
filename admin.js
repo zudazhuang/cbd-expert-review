@@ -282,7 +282,7 @@ async function refreshData() {
   const output = document.querySelector("#adminOutput");
   const hasPrimary = Boolean(primaryListUrl());
   const hasLegacyCrud = BACKEND.type === "crudcrud" && BACKEND.baseUrl;
-  const shouldReadDrafts = new URL(window.location.href).searchParams.get("drafts") === "1";
+  const shouldReadDrafts = new URL(window.location.href).searchParams.get("drafts") !== "0";
   if (hasPrimary || hasLegacyCrud) {
     status.textContent = "正在读取后台数据...";
     const [primary, list, drafts] = await Promise.all([
@@ -309,7 +309,7 @@ async function refreshData() {
     output.value = JSON.stringify({ submissions, drafts: loadedDrafts }, null, 2);
     document.querySelector("#downloadCsvBtn").disabled = !loadedRecords.length;
     document.querySelector("#downloadJsonBtn").disabled = !loadedSubmissions.length;
-    const draftNote = shouldReadDrafts ? `另有 ${loadedDrafts.length} 条暂存记录。` : "暂存记录未读取；如需查看暂存，在地址后加 ?drafts=1。";
+    const draftNote = shouldReadDrafts ? `另有 ${loadedDrafts.length} 条暂存记录。` : "暂存记录未读取。";
     status.textContent = `已读取 ${loadedSubmissions.length} 份正式答卷，展开为 ${loadedRecords.length} 条评分记录；${draftNote}`;
     return;
   }
