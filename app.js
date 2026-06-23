@@ -121,7 +121,7 @@ function backendReady() {
 }
 
 function primaryBackendReady() {
-  return Boolean(PRIMARY_BACKEND.type === "google_apps_script" && PRIMARY_BACKEND.submitUrl);
+  return Boolean(["google_apps_script", "cloudbase_http"].includes(PRIMARY_BACKEND.type) && PRIMARY_BACKEND.submitUrl);
 }
 
 function objectUrl(id) {
@@ -721,15 +721,27 @@ async function cleanupLegacyDrafts(compactSubmission) {
 
 async function submitToPrimaryBackend(compactSubmission) {
   if (!primaryBackendReady()) throw new Error("未配置长期后台。");
+  const payload = compactForBackend({
+    ...compactSubmission,
+    saved_at: compactSubmission.submitted_at,
+  });
+  if (PRIMARY_BACKEND.type === "cloudbase_http") {
+    const response = await fetch(PRIMARY_BACKEND.submitUrl, {
+      method: "POST",
+      mode: "cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error(`长期后台提交失败：${response.status}`);
+    const result = await response.json().catch(() => ({}));
+    return `已提交到长期后台数据表${result.id ? `，后台记录ID：${result.id}` : ""}。`;
+  }
   if (PRIMARY_BACKEND.type !== "google_apps_script") throw new Error("长期后台类型暂不支持。");
   await fetch(PRIMARY_BACKEND.submitUrl, {
     method: "POST",
     mode: "no-cors",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify(compactForBackend({
-      ...compactSubmission,
-      saved_at: compactSubmission.submitted_at,
-    })),
+    body: JSON.stringify(payload),
   });
   return "已提交到长期后台数据表。";
 }

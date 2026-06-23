@@ -1,7 +1,7 @@
 window.EXPERT_REVIEW_SUBMIT_ENDPOINT = "";
 window.EXPERT_REVIEW_SUBMIT_MODE = "no-cors";
 window.EXPERT_REVIEW_PRIMARY_BACKEND = {
-  type: "google_apps_script",
+  type: "cloudbase_http",
   submitUrl: "",
   listUrl: "",
 };

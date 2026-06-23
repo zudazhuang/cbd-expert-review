@@ -75,6 +75,11 @@ function loadJsonp(url) {
 async function primaryList() {
   const url = primaryListUrl();
   if (!url) return { submissions: [], drafts: [] };
+  if (PRIMARY_BACKEND.type === "cloudbase_http") {
+    const response = await fetch(`${url}${url.includes("?") ? "&" : "?"}action=list&t=${Date.now()}`, { cache: "no-store" });
+    if (!response.ok) throw new Error(`长期后台读取失败：${response.status}`);
+    return response.json();
+  }
   return loadJsonp(url);
 }
 
