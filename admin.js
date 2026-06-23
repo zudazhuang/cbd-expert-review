@@ -1,4 +1,5 @@
 const BACKEND = window.EXPERT_REVIEW_BACKEND || {};
+const PRIMARY_BACKEND = window.EXPERT_REVIEW_PRIMARY_BACKEND || {};
 
 const cases = [
   ["01", "A形框架茶室"],
@@ -44,6 +45,37 @@ async function crudList(collection) {
   const response = await fetch(crudUrl(collection), { cache: "no-store" });
   if (!response.ok) throw new Error(`后台读取失败：${response.status}`);
   return response.json();
+}
+
+function primaryListUrl() {
+  if (!PRIMARY_BACKEND.listUrl) return "";
+  return PRIMARY_BACKEND.listUrl;
+}
+
+function loadJsonp(url) {
+  return new Promise((resolve, reject) => {
+    const callback = `expertReviewCallback_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const script = document.createElement("script");
+    const separator = url.includes("?") ? "&" : "?";
+    window[callback] = (data) => {
+      delete window[callback];
+      script.remove();
+      resolve(data);
+    };
+    script.onerror = () => {
+      delete window[callback];
+      script.remove();
+      reject(new Error("长期后台读取失败。"));
+    };
+    script.src = `${url}${separator}callback=${callback}&t=${Date.now()}`;
+    document.body.append(script);
+  });
+}
+
+async function primaryList() {
+  const url = primaryListUrl();
+  if (!url) return { submissions: [], drafts: [] };
+  return loadJsonp(url);
 }
 
 function keyOf(groupId, caseId, dimId) {
@@ -230,25 +262,38 @@ function renderDraftRows(drafts) {
 async function refreshData() {
   const status = document.querySelector("#adminStatus");
   const output = document.querySelector("#adminOutput");
+  const hasPrimary = Boolean(primaryListUrl());
+  const hasLegacyCrud = BACKEND.type === "crudcrud" && BACKEND.baseUrl;
+  if (hasPrimary || hasLegacyCrud) {
+    status.textContent = "正在读取后台数据...";
+    const [primary, list, drafts] = await Promise.all([
+      primaryList().catch(() => ({ submissions: [], drafts: [] })),
+      hasLegacyCrud ? crudList("submissions").catch(() => []) : Promise.resolve([]),
+      hasLegacyCrud ? crudList("drafts").catch(() => []) : Promise.resolve([]),
+    ]);
+    const primarySubmissions = (primary.submissions || []).map((item) => ({
+      ...normalizeSubmission(item),
+      backend_id: item.id || item._id || "",
+      backend_source: "primary",
+    }));
+    const legacySubmissions = list.map((item) => ({
+      ...normalizeSubmission(item),
+      backend_id: item._id,
+      backend_source: "legacy",
+    }));
+    const submissions = [...primarySubmissions, ...legacySubmissions];
+    loadedDrafts = [...(primary.drafts || []), ...drafts];
+    loadedSubmissions = submissions;
+    loadedRecords = submissions.flatMap(expandRecords);
+    renderRows(submissions.map((item) => item.backend_id), submissions);
+    renderDraftRows(loadedDrafts);
+    output.value = JSON.stringify({ submissions, drafts: loadedDrafts }, null, 2);
+    document.querySelector("#downloadCsvBtn").disabled = !loadedRecords.length;
+    document.querySelector("#downloadJsonBtn").disabled = !loadedSubmissions.length;
+    status.textContent = `已读取 ${loadedSubmissions.length} 份正式答卷，展开为 ${loadedRecords.length} 条评分记录；另有 ${loadedDrafts.length} 条暂存记录。`;
+    return;
+  }
   if (!BACKEND.baseUrl || !BACKEND.indexId) {
-    if (BACKEND.type === "crudcrud" && BACKEND.baseUrl) {
-      status.textContent = "正在读取后台数据...";
-      const [list, drafts] = await Promise.all([
-        crudList("submissions").catch(() => []),
-        crudList("drafts").catch(() => []),
-      ]);
-      const submissions = list.map((item) => ({ ...normalizeSubmission(item), backend_id: item._id }));
-      loadedDrafts = drafts;
-      loadedSubmissions = submissions;
-      loadedRecords = submissions.flatMap(expandRecords);
-      renderRows(submissions.map((item) => item.backend_id), submissions);
-      renderDraftRows(drafts);
-      output.value = JSON.stringify({ submissions, drafts }, null, 2);
-      document.querySelector("#downloadCsvBtn").disabled = !loadedRecords.length;
-      document.querySelector("#downloadJsonBtn").disabled = !loadedSubmissions.length;
-      status.textContent = `已读取 ${loadedSubmissions.length} 份正式答卷，展开为 ${loadedRecords.length} 条评分记录；另有 ${loadedDrafts.length} 条暂存记录。`;
-      return;
-    }
     status.textContent = "未配置后台索引。";
     return;
   }

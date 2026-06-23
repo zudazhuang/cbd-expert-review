@@ -1,5 +1,6 @@
 const SUBMIT_ENDPOINT = window.EXPERT_REVIEW_SUBMIT_ENDPOINT || "";
 const SUBMIT_MODE = window.EXPERT_REVIEW_SUBMIT_MODE || "no-cors";
+const PRIMARY_BACKEND = window.EXPERT_REVIEW_PRIMARY_BACKEND || {};
 const REST_BACKEND = window.EXPERT_REVIEW_BACKEND || {};
 const STORAGE_KEY = "cbd_expert_review_draft_v2";
 const DRAFT_ID_KEY = "cbd_expert_review_draft_id";
@@ -117,6 +118,10 @@ function candidateLabel(group, code) {
 
 function backendReady() {
   return Boolean(REST_BACKEND.baseUrl && (REST_BACKEND.type === "crudcrud" || REST_BACKEND.indexId));
+}
+
+function primaryBackendReady() {
+  return Boolean(PRIMARY_BACKEND.type === "google_apps_script" && PRIMARY_BACKEND.submitUrl);
 }
 
 function objectUrl(id) {
@@ -679,7 +684,29 @@ async function submitToRestBackend(compactSubmission, recordCount) {
   return `已提交到后台数据表，后台记录ID：${created.id}`;
 }
 
+async function submitToPrimaryBackend(compactSubmission) {
+  if (!primaryBackendReady()) throw new Error("未配置长期后台。");
+  if (PRIMARY_BACKEND.type !== "google_apps_script") throw new Error("长期后台类型暂不支持。");
+  await fetch(PRIMARY_BACKEND.submitUrl, {
+    method: "POST",
+    mode: "no-cors",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(compactForBackend({
+      ...compactSubmission,
+      saved_at: compactSubmission.submitted_at,
+    })),
+  });
+  return "已提交到长期后台数据表。";
+}
+
 async function trySubmit(payload, compactSubmission) {
+  if (primaryBackendReady()) {
+    try {
+      return await submitToPrimaryBackend(compactSubmission);
+    } catch (error) {
+      if (!backendReady()) throw error;
+    }
+  }
   if (backendReady()) return submitToRestBackend(compactSubmission, payload.records.length);
   if (!SUBMIT_ENDPOINT) return "未配置后台回收接口，当前结果尚未进入后台数据表。";
   if (SUBMIT_MODE === "no-cors") {
