@@ -2,5 +2,9 @@
 assets/local_preview.png
 assets/revised_local_preview.png
 assets/online_mobile_preview.png
+assets/blind_preview.png
+assets/compact_blind_preview.png
+assets/mobile_first_table_preview.png
+assets/mobile_table_preview.png
 gh_auth_*.txt
 *.log
