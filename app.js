@@ -737,17 +737,13 @@ async function submitToPrimaryBackend(compactSubmission) {
 async function trySubmit(payload, compactSubmission) {
   if (primaryBackendReady()) {
     try {
-      const message = await submitToPrimaryBackend(compactSubmission);
-      cleanupLegacyDrafts(compactSubmission).catch(() => {});
-      return message;
+      return await submitToPrimaryBackend(compactSubmission);
     } catch (error) {
       if (!backendReady()) throw error;
     }
   }
   if (backendReady()) {
-    const message = await submitToRestBackend(compactSubmission, payload.records.length);
-    cleanupLegacyDrafts(compactSubmission).catch(() => {});
-    return message;
+    return submitToRestBackend(compactSubmission, payload.records.length);
   }
   if (!SUBMIT_ENDPOINT) return "未配置后台回收接口，当前结果尚未进入后台数据表。";
   if (SUBMIT_MODE === "no-cors") {
