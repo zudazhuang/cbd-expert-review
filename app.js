@@ -75,8 +75,14 @@ function buildSurvey() {
       card.innerHTML = `
         <div class="case-title">
           <h3>${caseId} ${caseName}</h3>
-          <span class="score-note">候选：${group.candidates.map(([code, name]) => `${code}-${name}`).join(" / ")}</span>
+          <span class="score-note">${group.figure}，候选：${group.candidates.map(([code, name]) => `${code}-${name}`).join(" / ")}</span>
         </div>
+        <figure class="case-figure">
+          <a href="assets/cases/${group.id}_${caseId}.jpg" target="_blank" rel="noreferrer">
+            <img src="assets/cases/${group.id}_${caseId}.jpg" alt="${group.name} ${caseId} ${caseName} comparison" loading="lazy" />
+          </a>
+          <figcaption>${group.name} / ${caseId} ${caseName}：请根据上方同一组图片完成下方三个维度排序。</figcaption>
+        </figure>
         <div class="question-grid"></div>
       `;
       const grid = card.querySelector(".question-grid");
@@ -89,30 +95,33 @@ function buildSurvey() {
         question.innerHTML = `
           <div class="question-head">
             <strong>${dimName}</strong>
-            <span class="score-note">第1名=5分</span>
+            <span class="score-note">第1名=5分，第5名=1分</span>
           </div>
-          <div class="candidate-row"></div>
+          <div class="rank-selects"></div>
           <div class="rank-row" aria-live="polite"></div>
           <div class="candidate-row mini-actions">
-            <button class="muted undo" type="button">撤销</button>
             <button class="muted clear" type="button">清空</button>
           </div>
         `;
-        const candidateRow = question.querySelector(".candidate-row");
-        for (const [code, name] of group.candidates) {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.className = "candidate";
-          btn.dataset.code = code;
-          btn.textContent = `${code} ${name}`;
-          btn.addEventListener("click", () => chooseCandidate(group, qKey, code));
-          candidateRow.append(btn);
+        const rankSelects = question.querySelector(".rank-selects");
+        for (let rank = 1; rank <= group.candidates.length; rank += 1) {
+          const label = document.createElement("label");
+          label.className = "rank-select-label";
+          const select = document.createElement("select");
+          select.dataset.rank = String(rank);
+          select.innerHTML = [
+            `<option value="">请选择</option>`,
+            ...group.candidates.map(([code, name]) => `<option value="${code}">${code} ${name}</option>`),
+          ].join("");
+          select.addEventListener("change", () => updateOrderFromSelects(qKey));
+          label.innerHTML = `<span>第${rank}名（${6 - rank}分）是谁？</span>`;
+          label.append(select);
+          rankSelects.append(label);
         }
-        question.querySelector(".undo").addEventListener("click", () => {
-          state[qKey].pop();
-          renderQuestion(qKey);
-        });
         question.querySelector(".clear").addEventListener("click", () => {
+          for (const select of question.querySelectorAll("select")) {
+            select.value = "";
+          }
           state[qKey] = [];
           renderQuestion(qKey);
         });
@@ -124,9 +133,11 @@ function buildSurvey() {
   }
 }
 
-function chooseCandidate(group, qKey, code) {
-  if (state[qKey].includes(code) || state[qKey].length >= group.candidates.length) return;
-  state[qKey].push(code);
+function updateOrderFromSelects(qKey) {
+  const question = document.querySelector(`.question[data-key="${qKey}"]`);
+  state[qKey] = Array.from(question.querySelectorAll("select"))
+    .map((select) => select.value)
+    .filter(Boolean);
   renderQuestion(qKey);
 }
 
@@ -136,17 +147,27 @@ function renderQuestion(qKey) {
   const [groupId] = qKey.split("|");
   const group = groups.find((item) => item.id === groupId);
   const order = state[qKey];
-  question.classList.toggle("invalid", order.length > 0 && order.length < group.candidates.length);
-  for (const btn of question.querySelectorAll(".candidate")) {
-    btn.classList.toggle("selected", order.includes(btn.dataset.code));
-    btn.disabled = order.includes(btn.dataset.code) || order.length >= group.candidates.length;
+  const hasDuplicate = new Set(order).size !== order.length;
+  const isPartial = order.length > 0 && order.length < group.candidates.length;
+  question.classList.toggle("invalid", hasDuplicate || isPartial);
+  for (const select of question.querySelectorAll("select")) {
+    for (const option of select.options) {
+      if (!option.value) {
+        option.disabled = false;
+        continue;
+      }
+      option.disabled = order.includes(option.value) && option.value !== select.value;
+    }
   }
   const rankRow = question.querySelector(".rank-row");
   if (!order.length) {
     rankRow.innerHTML = `<span class="score-note">尚未选择</span>`;
     return;
   }
-  rankRow.innerHTML = order
+  const warning = hasDuplicate
+    ? `<span class="rank-warning">同一维度内候选方案不能重复，请修改。</span>`
+    : "";
+  rankRow.innerHTML = warning + order
     .map((code, index) => `<span class="rank-chip">第${index + 1}名(${5 - index}分)：${candidateLabel(group, code)}</span>`)
     .join("");
 }

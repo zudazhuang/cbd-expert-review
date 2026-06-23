@@ -1,3 +1,6 @@
 .vendor/
 assets/local_preview.png
+assets/revised_local_preview.png
+assets/online_mobile_preview.png
+gh_auth_*.txt
 *.log
