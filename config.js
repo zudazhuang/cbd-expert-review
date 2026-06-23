@@ -7,5 +7,5 @@ window.EXPERT_REVIEW_PRIMARY_BACKEND = {
 };
 window.EXPERT_REVIEW_BACKEND = {
   type: "crudcrud",
-  baseUrl: "https://crudcrud.com/api/380f68c9ee2f46868773243f05436622",
+  baseUrl: "https://crudcrud.com/api/af35b181c6124950adcad457cabf9d2a",
 };
