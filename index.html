@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>建筑生成方案专家排序评审</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div>
+        <p class="eyebrow">Expert Review Form</p>
+        <h1>建筑生成方案专家排序评审</h1>
+        <p class="lead">
+          请结合实验图片，对不同生成方案在功能适配、建构合规、形式表现三个维度上的相对表现进行排序。
+          排序按第1名=5分、第2名=4分、第3名=3分、第4名=2分、第5名=1分折算。
+        </p>
+      </div>
+      <a class="ghost-link" href="#submit">提交结果</a>
+    </header>
+
+    <main>
+      <section class="panel compact">
+        <h2>评价维度说明</h2>
+        <div class="criteria-grid">
+          <div>
+            <h3>功能适配 Functionality</h3>
+            <p>关注方案是否回应任务场景、空间组织、使用流线、场地关系与目标功能。</p>
+          </div>
+          <div>
+            <h3>建构合规 Build Quality</h3>
+            <p>关注结构逻辑、构件连接、尺度合理性、可建造性与模型表达完整度。</p>
+          </div>
+          <div>
+            <h3>形式表现 Impact</h3>
+            <p>关注建筑形态、材料界面、产品识别度、视觉完成度和整体表现力。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="background">
+        <h2>投票人背景信息</h2>
+        <div class="form-grid">
+          <label>投票人ID或姓名<input id="voterId" autocomplete="name" required /></label>
+          <label>最高学历
+            <select id="education" required>
+              <option value="">请选择</option>
+              <option>高中/中专及以下</option>
+              <option>大专</option>
+              <option>本科</option>
+              <option>硕士</option>
+              <option>博士</option>
+            </select>
+          </label>
+          <label>是否建筑专业
+            <select id="architectureMajor" required>
+              <option value="">请选择</option>
+              <option>是</option>
+              <option>否</option>
+            </select>
+          </label>
+          <label>是否从事一线设计工作
+            <select id="frontlineDesign" required>
+              <option value="">请选择</option>
+              <option>是</option>
+              <option>否</option>
+            </select>
+          </label>
+          <label>设计工作年限
+            <select id="designYears" required>
+              <option value="">请选择</option>
+              <option>0年</option>
+              <option>1-3年</option>
+              <option>4-7年</option>
+              <option>8-15年</option>
+              <option>15年以上</option>
+            </select>
+          </label>
+          <label>是否熟悉AI/3D生成工具
+            <select id="toolFamiliarity" required>
+              <option value="">请选择</option>
+              <option>不熟悉</option>
+              <option>了解</option>
+              <option>经常使用</option>
+            </select>
+          </label>
+          <label>单位/身份<input id="affiliation" placeholder="可选" /></label>
+          <label>备注<input id="note" placeholder="可选" /></label>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>实验图片</h2>
+        <p class="hint">点击图片可在新标签页查看大图。请先浏览图片，再完成下方排序。</p>
+        <div class="figure-stack">
+          <figure>
+            <a href="assets/fig5_1_overview.png" target="_blank" rel="noreferrer">
+              <img src="assets/fig5_1_overview.png" alt="Figure 5-1 five-round axonometric comparison" />
+            </a>
+            <figcaption>图5-1. 八个测试案例的五轮交互生成过程，用于观察从初始生成到最终优化的连续改进。</figcaption>
+          </figure>
+          <figure>
+            <a href="assets/fig5_2_e2e_cases01_04.png" target="_blank" rel="noreferrer">
+              <img src="assets/fig5_2_e2e_cases01_04.png" alt="Figure 5-2 end-to-end comparison cases 01-04" />
+            </a>
+            <figcaption>图5-2a. 测试01-04的端到端模型对比，用于评价不同生成模型的结果差异。</figcaption>
+          </figure>
+          <figure>
+            <a href="assets/fig5_2_e2e_cases05_08.png" target="_blank" rel="noreferrer">
+              <img src="assets/fig5_2_e2e_cases05_08.png" alt="Figure 5-2 end-to-end comparison cases 05-08" />
+            </a>
+            <figcaption>图5-2b. 测试05-08的端到端模型对比，用于评价复杂产品形态与场景适配表现。</figcaption>
+          </figure>
+          <figure>
+            <a href="assets/fig5_3_mcp_cases01_04.png" target="_blank" rel="noreferrer">
+              <img src="assets/fig5_3_mcp_cases01_04.png" alt="Figure 5-3 MCP comparison cases 01-04" />
+            </a>
+            <figcaption>图5-3a. 测试01-04的MCP方法对比，用于评价不同建模工具链的建筑表达能力。</figcaption>
+          </figure>
+          <figure>
+            <a href="assets/fig5_3_mcp_cases05_08.png" target="_blank" rel="noreferrer">
+              <img src="assets/fig5_3_mcp_cases05_08.png" alt="Figure 5-3 MCP comparison cases 05-08" />
+            </a>
+            <figcaption>图5-3b. 测试05-08的MCP方法对比，用于评价复杂构件、界面和产品特征的生成质量。</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>排序填写</h2>
+        <p class="hint">每一道题请依次点击五个候选项，形成第1名到第5名。点错可撤销或清空。</p>
+        <div id="survey"></div>
+      </section>
+
+      <section class="panel" id="submit">
+        <h2>提交与导出</h2>
+        <p class="hint">
+          GitHub Pages 静态页面默认不保存数据。请完成后点击“生成结果”，下载CSV或复制结果发给研究者。
+          若后续配置了在线回收接口，页面会自动尝试提交。
+        </p>
+        <div class="actions">
+          <button id="generateBtn" type="button">生成结果</button>
+          <button id="downloadBtn" type="button" disabled>下载CSV</button>
+          <button id="copyBtn" type="button" disabled>复制JSON</button>
+          <a id="mailBtn" class="button muted disabled" href="#" aria-disabled="true">邮件发送</a>
+        </div>
+        <pre id="status" class="status">尚未生成结果。</pre>
+        <textarea id="output" readonly placeholder="生成后的结构化结果会显示在这里"></textarea>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
