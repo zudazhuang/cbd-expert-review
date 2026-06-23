@@ -79,9 +79,12 @@ function buildSurvey() {
         </div>
         <figure class="case-figure">
           <a href="assets/cases/${group.id}_${caseId}.jpg" target="_blank" rel="noreferrer">
-            <img src="assets/cases/${group.id}_${caseId}.jpg" alt="${group.name} ${caseId} ${caseName} comparison" loading="lazy" />
+            <picture>
+              <source media="(max-width: 700px)" srcset="assets/cases_mobile/${group.id}_${caseId}.jpg" />
+              <img src="assets/cases/${group.id}_${caseId}.jpg" alt="${group.name} ${caseId} ${caseName} comparison" loading="lazy" />
+            </picture>
           </a>
-          <figcaption>${group.name} / ${caseId} ${caseName}：请根据上方匿名候选图完成下方三个维度排序。</figcaption>
+          <figcaption>${group.name} / ${caseId} ${caseName}：手机端已放大为两行图，请根据上方匿名候选图完成下方三个维度排序。</figcaption>
         </figure>
         <div class="ranking-table-wrap">
           <table class="ranking-table">
