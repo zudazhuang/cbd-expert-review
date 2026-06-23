@@ -1,14 +1,35 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 from pathlib import Path
 import sys
 
 
 ROOT = Path(__file__).resolve().parents[1]
 VENDOR = ROOT / ".vendor"
-if VENDOR.exists():
-    sys.path.insert(0, str(VENDOR))
+
+
+def import_qrcode():
+    try:
+        import qrcode
+
+        return qrcode
+    except ModuleNotFoundError:
+        package_init = VENDOR / "qrcode" / "__init__.py"
+        if not package_init.exists():
+            raise
+        spec = importlib.util.spec_from_file_location(
+            "qrcode",
+            package_init,
+            submodule_search_locations=[str(VENDOR / "qrcode")],
+        )
+        if spec is None or spec.loader is None:
+            raise ModuleNotFoundError("Cannot load qrcode from .vendor")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules["qrcode"] = module
+        spec.loader.exec_module(module)
+        return module
 
 
 def main() -> None:
@@ -18,10 +39,10 @@ def main() -> None:
     args = parser.parse_args()
 
     try:
-        import qrcode
+        qrcode = import_qrcode()
     except ModuleNotFoundError as exc:
         raise SystemExit(
-            "Missing dependency: qrcode. Install with: python -m pip install qrcode[pil] --target "
+            "Missing dependency: qrcode. Install with: python -m pip install qrcode --target "
             + str(VENDOR)
         ) from exc
 
