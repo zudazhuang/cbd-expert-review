@@ -19,27 +19,27 @@ const dimensions = [
 
 const groups = [
   {
-    id: "e2e",
-    name: "端到端模型对比",
-    figure: "图5-2",
+    id: "group1",
+    name: "对比组一",
+    figure: "组一",
     candidates: [
-      ["A", "本文方法(CBD)"],
-      ["B", "Image3D"],
-      ["C", "Meshy"],
-      ["D", "Tripo"],
-      ["E", "Hunyuan3D"],
+      ["A", "方案A"],
+      ["B", "方案B"],
+      ["C", "方案C"],
+      ["D", "方案D"],
+      ["E", "方案E"],
     ],
   },
   {
-    id: "mcp",
-    name: "MCP方法对比",
-    figure: "图5-3",
+    id: "group2",
+    name: "对比组二",
+    figure: "组二",
     candidates: [
-      ["A", "本文方法(CBD)"],
-      ["B", "AutoCAD MCP"],
-      ["C", "SketchUp MCP"],
-      ["D", "Revit MCP"],
-      ["E", "Rhino MCP"],
+      ["A", "方案A"],
+      ["B", "方案B"],
+      ["C", "方案C"],
+      ["D", "方案D"],
+      ["E", "方案E"],
     ],
   },
 ];
@@ -54,7 +54,7 @@ function keyOf(groupId, caseId, dimId) {
 
 function candidateLabel(group, code) {
   const item = group.candidates.find(([candidateCode]) => candidateCode === code);
-  return item ? `${item[0]} ${item[1]}` : code;
+  return item ? item[1] : code;
 }
 
 function buildSurvey() {
@@ -66,7 +66,7 @@ function buildSurvey() {
     section.innerHTML = `
       <div class="group-title">
         <h3>${group.name}</h3>
-        <span class="score-note">对应${group.figure}；每题依次选择第1名到第5名</span>
+          <span class="score-note">匿名候选方案A-E</span>
       </div>
     `;
     for (const [caseId, caseName] of cases) {
@@ -75,57 +75,70 @@ function buildSurvey() {
       card.innerHTML = `
         <div class="case-title">
           <h3>${caseId} ${caseName}</h3>
-          <span class="score-note">${group.figure}，候选：${group.candidates.map(([code, name]) => `${code}-${name}`).join(" / ")}</span>
+          <span class="score-note">候选：方案A / 方案B / 方案C / 方案D / 方案E</span>
         </div>
         <figure class="case-figure">
           <a href="assets/cases/${group.id}_${caseId}.jpg" target="_blank" rel="noreferrer">
             <img src="assets/cases/${group.id}_${caseId}.jpg" alt="${group.name} ${caseId} ${caseName} comparison" loading="lazy" />
           </a>
-          <figcaption>${group.name} / ${caseId} ${caseName}：请根据上方同一组图片完成下方三个维度排序。</figcaption>
+          <figcaption>${group.name} / ${caseId} ${caseName}：请根据上方匿名候选图完成下方三个维度排序。</figcaption>
         </figure>
-        <div class="question-grid"></div>
+        <div class="ranking-table-wrap">
+          <table class="ranking-table">
+            <thead>
+              <tr>
+                <th>名次</th>
+                ${dimensions.map(([, dimName]) => `<th>${dimName}</th>`).join("")}
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="dimension-statuses"></div>
       `;
-      const grid = card.querySelector(".question-grid");
+      const tbody = card.querySelector("tbody");
+      const statuses = card.querySelector(".dimension-statuses");
+      for (let rank = 1; rank <= group.candidates.length; rank += 1) {
+        const row = document.createElement("tr");
+        row.innerHTML = `<th>第${rank}名<br><span>${6 - rank}分</span></th>`;
+        for (const [dimId, dimName] of dimensions) {
+          const qKey = keyOf(group.id, caseId, dimId);
+          const select = document.createElement("select");
+          select.dataset.key = qKey;
+          select.dataset.rank = String(rank);
+          select.setAttribute("aria-label", `${caseId} ${caseName} ${dimName} 第${rank}名`);
+          select.innerHTML = [
+            `<option value="">请选择</option>`,
+            ...group.candidates.map(([code, name]) => `<option value="${code}">${name}</option>`),
+          ].join("");
+          select.addEventListener("change", () => updateOrderFromSelects(qKey));
+          const cell = document.createElement("td");
+          cell.append(select);
+          row.append(cell);
+        }
+        tbody.append(row);
+      }
       for (const [dimId, dimName] of dimensions) {
-        const question = document.createElement("div");
         const qKey = keyOf(group.id, caseId, dimId);
+        const question = document.createElement("div");
         question.className = "question";
         question.dataset.key = qKey;
         state[qKey] = [];
         question.innerHTML = `
-          <div class="question-head">
-            <strong>${dimName}</strong>
-            <span class="score-note">第1名=5分，第5名=1分</span>
-          </div>
-          <div class="rank-selects"></div>
-          <div class="rank-row" aria-live="polite"></div>
-          <div class="candidate-row mini-actions">
+          <strong>${dimName}</strong>
+          <span class="rank-row" aria-live="polite">尚未选择</span>
+          <span class="mini-actions">
             <button class="muted clear" type="button">清空</button>
-          </div>
+          </span>
         `;
-        const rankSelects = question.querySelector(".rank-selects");
-        for (let rank = 1; rank <= group.candidates.length; rank += 1) {
-          const label = document.createElement("label");
-          label.className = "rank-select-label";
-          const select = document.createElement("select");
-          select.dataset.rank = String(rank);
-          select.innerHTML = [
-            `<option value="">请选择</option>`,
-            ...group.candidates.map(([code, name]) => `<option value="${code}">${code} ${name}</option>`),
-          ].join("");
-          select.addEventListener("change", () => updateOrderFromSelects(qKey));
-          label.innerHTML = `<span>第${rank}名（${6 - rank}分）是谁？</span>`;
-          label.append(select);
-          rankSelects.append(label);
-        }
         question.querySelector(".clear").addEventListener("click", () => {
-          for (const select of question.querySelectorAll("select")) {
+          for (const select of document.querySelectorAll(`select[data-key="${qKey}"]`)) {
             select.value = "";
           }
           state[qKey] = [];
           renderQuestion(qKey);
         });
-        grid.append(question);
+        statuses.append(question);
       }
       section.append(card);
     }
@@ -134,8 +147,7 @@ function buildSurvey() {
 }
 
 function updateOrderFromSelects(qKey) {
-  const question = document.querySelector(`.question[data-key="${qKey}"]`);
-  state[qKey] = Array.from(question.querySelectorAll("select"))
+  state[qKey] = Array.from(document.querySelectorAll(`select[data-key="${qKey}"]`))
     .map((select) => select.value)
     .filter(Boolean);
   renderQuestion(qKey);
@@ -150,7 +162,7 @@ function renderQuestion(qKey) {
   const hasDuplicate = new Set(order).size !== order.length;
   const isPartial = order.length > 0 && order.length < group.candidates.length;
   question.classList.toggle("invalid", hasDuplicate || isPartial);
-  for (const select of question.querySelectorAll("select")) {
+  for (const select of document.querySelectorAll(`select[data-key="${qKey}"]`)) {
     for (const option of select.options) {
       if (!option.value) {
         option.disabled = false;
@@ -164,12 +176,13 @@ function renderQuestion(qKey) {
     rankRow.innerHTML = `<span class="score-note">尚未选择</span>`;
     return;
   }
-  const warning = hasDuplicate
-    ? `<span class="rank-warning">同一维度内候选方案不能重复，请修改。</span>`
-    : "";
-  rankRow.innerHTML = warning + order
-    .map((code, index) => `<span class="rank-chip">第${index + 1}名(${5 - index}分)：${candidateLabel(group, code)}</span>`)
-    .join("");
+  if (hasDuplicate) {
+    rankRow.innerHTML = `<span class="rank-warning">同一维度内候选方案不能重复，请修改。</span>`;
+  } else if (order.length === group.candidates.length) {
+    rankRow.innerHTML = `<span class="rank-done">已完成</span>`;
+  } else {
+    rankRow.innerHTML = `<span class="score-note">已选择 ${order.length}/5</span>`;
+  }
 }
 
 function getBackground() {
@@ -291,7 +304,7 @@ async function generateOutput() {
   output.value = latestJson;
   if (csvBlobUrl) URL.revokeObjectURL(csvBlobUrl);
   csvBlobUrl = URL.createObjectURL(new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" }));
-  const filename = `CBD_expert_review_${bg.voter_id || "anonymous"}_${new Date().toISOString().slice(0, 10)}.csv`;
+  const filename = `expert_review_${bg.voter_id || "anonymous"}_${new Date().toISOString().slice(0, 10)}.csv`;
   const downloadBtn = document.querySelector("#downloadBtn");
   downloadBtn.disabled = false;
   downloadBtn.onclick = () => {
@@ -309,7 +322,7 @@ async function generateOutput() {
   const mailBtn = document.querySelector("#mailBtn");
   mailBtn.classList.remove("disabled");
   mailBtn.setAttribute("aria-disabled", "false");
-  mailBtn.href = `mailto:?subject=${encodeURIComponent("CBD专家评审结果")}&body=${encodeURIComponent(latestJson.slice(0, 18000))}`;
+  mailBtn.href = `mailto:?subject=${encodeURIComponent("专家评审结果")}&body=${encodeURIComponent(latestJson.slice(0, 18000))}`;
   try {
     const submitMsg = await trySubmit(payload);
     status.textContent = `${submitMsg}\n共生成 ${records.length} 条评分记录。请下载CSV并发送给研究者，或复制JSON。`;
